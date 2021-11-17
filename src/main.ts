@@ -1,19 +1,10 @@
-import * as dotenv from "dotenv";
-dotenv.config();
+import * as dotenv from 'dotenv';
+import Bot from './bot';
+import { Intents } from 'discord.js';
 
-const { Client, Intents } = require("discord.js");
-const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
+dotenv.config({});
 
-client.on("ready", () => {
-  console.log(`Logged in as ${client.user.tag}!`);
+Bot({
+  token: process.env.TOKEN || '',
+  intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES],
 });
-
-client.on("message", (msg: any) => {
-  console.log('msg rcv');
-  if (msg.author.bot) return;
-  msg.channel.send('hi');
-});
-
-console.log('tokeeen', process.env.TOKEN);
-
-client.login(process.env.TOKEN);
