@@ -2,13 +2,16 @@ import {
   Client,
   DMChannel,
   Message,
-  TextChannel,
-  PartialDMChannel,
   NewsChannel,
+  PartialDMChannel,
+  TextChannel,
   ThreadChannel,
 } from 'discord.js';
-import Scrapper, { News } from './scrapper';
+import Database, { News } from './database';
+import Scrapper from './scrapper';
 import { capitalize } from './utils';
+
+const NEWS_WATCHER_INTERVAL = 1 * 60000;
 
 interface BotParams {
   token: string;
@@ -28,17 +31,11 @@ type Channel =
 
 class Bot {
   client: Client;
-  scrapper: Scrapper;
-  token = '';
-  guildConfig: GuildConfig;
-  lastNews = Array<News>();
+  scrapper = new Scrapper();
+  database = new Database();
 
   constructor({ token, intents }: BotParams) {
     this.client = new Client({ intents });
-    this.scrapper = new Scrapper();
-    this.guildConfig = {
-      newsChannelId: '',
-    };
 
     this.client.on('ready', async () => {
       this.readyHandler();
@@ -47,12 +44,13 @@ class Bot {
       if (msg.author.bot) return;
       this.messageHandler(msg);
     });
+
     this.client.login(token);
   }
 
   readyHandler = async () => {
     console.log(`Logged in as ${this.client.user?.tag}!`);
-    this.startNewsWatcher(1000);
+    this.startNewsWatcher(NEWS_WATCHER_INTERVAL);
   };
 
   messageHandler = async (msg: Message) => {
@@ -60,7 +58,7 @@ class Bot {
       this.sendNews(msg.channel);
     }
     if (msg.content === '!hltv-setchannel') {
-      this.setNewsChannelId(msg.channelId);
+      this.handleSetNewsChannelId(msg);
     }
   };
 
@@ -76,41 +74,46 @@ class Bot {
   buildNewsText = (news: News) => {
     return `[${news.time}] [${news.comments} comments] ${capitalize(
       news.title
-    )}\n ${news.url}`;
+    )}\n`;
   };
 
   startNewsWatcher = (interval: number) => {
     setInterval(async () => {
-      if (this.guildConfig.newsChannelId) {
-        const newsChannel = this.client.channels.cache.get(
-          this.guildConfig.newsChannelId
-        ) as TextChannel;
-        const lastFiveNews = await (
-          await this.scrapper.getNotices()
-        ).slice(0, 5);
+      this.database.data.forEach(async (guild, guildId) => {
+        if (guild.newsChannelId) {
+          const newsChannel = this.client.channels.cache.get(
+            guild.newsChannelId
+          ) as TextChannel;
+          const lastNews = (await this.scrapper.getNotices()).slice(0, 5);
 
-        if (this.lastNews.length === 0) {
-          let resp = '';
-          for (const aNews of lastFiveNews) {
-            resp += this.buildNewsText(aNews) + '\n';
-          }
-          newsChannel.send(resp);
-        } else {
-          for (const aNews of lastFiveNews) {
-            if (!this.lastNews.find((news) => news.title === aNews.title)) {
-              const resp = this.buildNewsText(aNews);
-              newsChannel.send(resp);
+          if (guild.lastNews?.length === 0) {
+            let response = '';
+            for (const aNews of lastNews) {
+              response += this.buildNewsText(aNews);
+            }
+            newsChannel.send(response);
+          } else {
+            let response = '';
+            let hasNewsToSend = false;
+            for (const aNews of lastNews) {
+              if (!guild.lastNews?.find((news) => news.title === aNews.title)) {
+                hasNewsToSend = true;
+                response += this.buildNewsText(aNews);
+              }
+            }
+            if (hasNewsToSend) {
+              newsChannel.send(response);
             }
           }
+          this.database.setLastNews(guildId, [...lastNews]);
         }
-        this.lastNews = [...lastFiveNews];
-      }
+      });
     }, interval);
   };
 
-  setNewsChannelId = (channelId: string) => {
-    console.log('setting news channel id');
-    this.guildConfig.newsChannelId = channelId;
+  handleSetNewsChannelId = (msg: Message) => {
+    console.log('Settings channel id');
+    this.database.setNewsChannelId(msg.guildId as string, msg.channelId);
   };
 }
 

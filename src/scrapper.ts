@@ -1,12 +1,7 @@
 import axios from 'axios';
 import cheerio from 'cheerio';
+import { News } from './database';
 
-export interface News {
-  title: string;
-  url: string;
-  time: string;
-  comments: number;
-}
 
 class Scrapper {
   private Axios = axios.create();

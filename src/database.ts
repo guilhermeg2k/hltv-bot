@@ -1,14 +1,21 @@
 import fs from 'fs';
 import path from 'path';
 
+export interface News {
+  title: string;
+  url: string;
+  time: string;
+  comments: number;
+}
+
 interface DBObject {
-  newsChannelId: string;
+  newsChannelId?: string;
+  lastNews?: Array<News>;
 }
 
 class Database {
+  public data = new Map<string, DBObject>();
   private fileName = path.resolve(__dirname, 'db.json');
-  private data = new Map<string, DBObject>();
-
   constructor() {
     try {
       const databaseJSON = JSON.parse(
@@ -32,6 +39,24 @@ class Database {
       console.log('failed to save database');
     }
   };
+
+  setLastNews(guildId: string, lastNews: Array<News>) {
+    this.data.set(guildId, {
+      ...this.data.get(guildId),
+      lastNews,
+    });
+    this.save();
+  }
+
+  setNewsChannelId(guildId: string, newsChannelId: string) {
+    this.data.set(guildId, {
+      ...this.data.get(guildId),
+      newsChannelId,
+    });
+    this.save();
+  }
+
+  guilds = () => Array.from(this.data);
 }
 
 export default Database;
