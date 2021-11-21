@@ -1,3 +1,4 @@
+import * as dotenv from 'dotenv';
 import {
   Client,
   DMChannel,
@@ -11,7 +12,8 @@ import Database, { News } from './database';
 import Scrapper from './scrapper';
 import { capitalize } from './utils';
 
-const NEWS_WATCHER_INTERVAL = 1 * 60000;
+dotenv.config({});
+const NEWS_WATCHER_INTERVAL = process.env.ENV === 'PROD' ? 1 * 60000 : 1000;
 
 interface BotParams {
   token: string;
@@ -38,37 +40,42 @@ class Bot {
     this.client = new Client({ intents });
 
     this.client.on('ready', async () => {
-      this.readyHandler();
+      this.onReadyHandler();
     });
     this.client.on('messageCreate', async (msg) => {
       if (msg.author.bot) return;
-      this.messageHandler(msg);
+      this.onMessageCreateHandler(msg);
     });
 
     this.client.login(token);
   }
 
-  readyHandler = async () => {
+  onReadyHandler = async () => {
     console.log(`Logged in as ${this.client.user?.tag}!`);
     this.startNewsWatcher(NEWS_WATCHER_INTERVAL);
   };
 
-  messageHandler = async (msg: Message) => {
+  onMessageCreateHandler = async (msg: Message) => {
     if (msg.content === '!news') {
-      this.sendNews(msg.channel);
+      this.handleNews(msg.channel);
     }
     if (msg.content === '!hltv-setchannel') {
-      this.handleSetNewsChannelId(msg);
+      this.handleSetChannel(msg);
     }
   };
 
-  sendNews = async (channel: Channel) => {
+  handleNews = async (channel: Channel) => {
     const news = (await this.scrapper.getNotices()).slice(0, 5);
     let resp = '';
-    for (const newsElement of news) {
-      resp += `[${newsElement.title}](${newsElement.url})\n`;
+    for (const aNews of news) {
+      resp += this.buildNewsText(aNews);
     }
     channel.send(resp);
+  };
+
+  handleSetChannel = (msg: Message) => {
+    console.log('Settings channel id');
+    this.database.setNewsChannelId(msg.guildId as string, msg.channelId);
   };
 
   buildNewsText = (news: News) => {
@@ -79,7 +86,7 @@ class Bot {
 
   startNewsWatcher = (interval: number) => {
     setInterval(async () => {
-      this.database.data.forEach(async (guild, guildId) => {
+      this.database.guildData.forEach(async (guild, guildId) => {
         if (guild.newsChannelId) {
           const newsChannel = this.client.channels.cache.get(
             guild.newsChannelId
@@ -109,11 +116,6 @@ class Bot {
         }
       });
     }, interval);
-  };
-
-  handleSetNewsChannelId = (msg: Message) => {
-    console.log('Settings channel id');
-    this.database.setNewsChannelId(msg.guildId as string, msg.channelId);
   };
 }
 

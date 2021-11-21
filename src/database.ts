@@ -8,13 +8,13 @@ export interface News {
   comments: number;
 }
 
-interface DBObject {
+interface Guild {
   newsChannelId?: string;
   lastNews?: Array<News>;
 }
 
 class Database {
-  public data = new Map<string, DBObject>();
+  public guildData = new Map<string, Guild>();
   private fileName = path.resolve(__dirname, 'db.json');
   constructor() {
     try {
@@ -22,7 +22,7 @@ class Database {
         fs.readFileSync(this.fileName).toString()
       );
       for (const item in databaseJSON) {
-        this.data.set(item, databaseJSON[item]);
+        this.guildData.set(item, databaseJSON[item]);
       }
     } catch (err) {
       console.log('Failed to load db' + err);
@@ -33,7 +33,7 @@ class Database {
     try {
       fs.writeFileSync(
         path.resolve(__dirname, this.fileName),
-        JSON.stringify(Object.fromEntries(this.data))
+        JSON.stringify(Object.fromEntries(this.guildData))
       );
     } catch (error) {
       console.log('failed to save database');
@@ -41,22 +41,20 @@ class Database {
   };
 
   setLastNews(guildId: string, lastNews: Array<News>) {
-    this.data.set(guildId, {
-      ...this.data.get(guildId),
+    this.guildData.set(guildId, {
+      ...this.guildData.get(guildId),
       lastNews,
     });
     this.save();
   }
 
   setNewsChannelId(guildId: string, newsChannelId: string) {
-    this.data.set(guildId, {
-      ...this.data.get(guildId),
+    this.guildData.set(guildId, {
+      ...this.guildData.get(guildId),
       newsChannelId,
     });
     this.save();
   }
-
-  guilds = () => Array.from(this.data);
 }
 
 export default Database;
