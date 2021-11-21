@@ -2,8 +2,10 @@ import axios from 'axios';
 import cheerio from 'cheerio';
 
 export interface News {
-  text: string;
+  title: string;
   url: string;
+  time: string;
+  comments: number;
 }
 
 class Scrapper {
@@ -15,9 +17,18 @@ class Scrapper {
       const page = cheerio.load(res.data);
       const pageNews = page('.newsline.article');
       pageNews.each((i, newsElement) => {
+        const commentsRegex = /([0-9]+) comments/;
+        const comments = page(newsElement)
+          .find('.newstc')
+          .text()
+          .match(/([0-9]+) comments/);
+        const numberOfComments = comments ? parseInt(comments[0]) : 0;
+
         news.push({
-          text: page(newsElement).find('.newstext').text(),
-          url: 'https://www.hltv.org/'+page(newsElement).attr().href,
+          title: page(newsElement).find('.newstext').text(),
+          url: 'https://www.hltv.org' + page(newsElement).attr().href,
+          time: page(newsElement).find('.newsrecent').text(),
+          comments: numberOfComments,
         });
       });
       return Promise.resolve(news);
