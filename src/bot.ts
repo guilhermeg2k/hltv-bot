@@ -59,7 +59,7 @@ class Bot {
     if (msg.content === '!news') {
       this.handleNews(msg.channel);
     }
-    if (msg.content === '!hltv-setchannel') {
+    if (msg.content === '!setchannel') {
       this.handleSetChannel(msg);
     }
   };
@@ -74,14 +74,16 @@ class Bot {
   };
 
   handleSetChannel = (msg: Message) => {
-    console.log('Settings channel id');
     this.database.setNewsChannelId(msg.guildId as string, msg.channelId);
+    msg.channel.send(
+      '`⚙️ Esse canal foi setado para receber noticas da hltv!`'
+    );
   };
 
   buildNewsText = (news: News) => {
-    return `[${news.time}] [${news.comments} comments] ${capitalize(
-      news.title
-    )}\n`;
+    return `\`📖 ${capitalize(news.title)}\` \`${news.time}\` \`${
+      news.comments
+    } comentários\` \n${news.url}\n`;
   };
 
   startNewsWatcher = (interval: number) => {
