@@ -6,7 +6,9 @@
   "author": "guilhermeg2k",
   "license": "MIT",
   "scripts": {
-    "start": "tsnd --transpile-only --ignore-watch node_modules --respawn src/main.ts"
+    "dev": "tsnd --transpile-only --ignore-watch node_modules --respawn src/main.ts",
+    "build": "rm -rf build && tsc",
+    "start": "npm run build && node build/main.js"
   },
   "devDependencies": {
     "ts-node-dev": "^1.1.8",
